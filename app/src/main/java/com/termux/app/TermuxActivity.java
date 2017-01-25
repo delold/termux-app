@@ -12,7 +12,6 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.DialogInterface.OnShowListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -35,9 +34,6 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemLongClickListener;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import com.termux.R;
@@ -51,8 +47,6 @@ import com.termux.view.TerminalView;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -70,7 +64,6 @@ import java.util.regex.Pattern;
  */
 public final class TermuxActivity extends Activity implements ServiceConnection {
 
-    private static final int CONTEXTMENU_SELECT_URL_ID = 0;
     private static final int CONTEXTMENU_SHARE_TRANSCRIPT_ID = 1;
     private static final int CONTEXTMENU_PASTE_ID = 3;
     private static final int CONTEXTMENU_KILL_PROCESS_ID = 4;
@@ -291,6 +284,7 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                     public void run() {
                         if (mTermService == null) return; // Activity might have been destroyed.
 
+                        // Setup finished
 
                     }
                 });
@@ -318,16 +312,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             if (--index < 0) index = mTermService.getSessions().size() - 1;
         }
         switchToSession(mTermService.getSessions().get(index));
-    }
-
-    @SuppressLint("InflateParams")
-    void renameSession(final TerminalSession sessionToRename) {
-        DialogUtils.textInput(this, R.string.session_rename_title, sessionToRename.mSessionName, R.string.session_rename_positive_button, new DialogUtils.TextSetListener() {
-            @Override
-            public void onTextSet(String text) {
-                sessionToRename.mSessionName = text;
-            }
-        }, -1, null, -1, null, null);
     }
 
     @Override
@@ -426,7 +410,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         TerminalSession currentSession = getCurrentTermSession();
         if (currentSession == null) return;
 
-        menu.add(Menu.NONE, CONTEXTMENU_SELECT_URL_ID, Menu.NONE, R.string.select_url);
         menu.add(Menu.NONE, CONTEXTMENU_SHARE_TRANSCRIPT_ID, Menu.NONE, R.string.select_all_and_share);
         menu.add(Menu.NONE, CONTEXTMENU_RESET_TERMINAL_ID, Menu.NONE, R.string.reset_terminal);
         menu.add(Menu.NONE, CONTEXTMENU_KILL_PROCESS_ID, Menu.NONE, getResources().getString(R.string.kill_process, getCurrentTermSession().getPid())).setEnabled(currentSession.isRunning());
@@ -459,62 +442,11 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         return urlSet;
     }
 
-    void showUrlSelection() {
-        String text = getCurrentTermSession().getEmulator().getScreen().getTranscriptText();
-        LinkedHashSet<CharSequence> urlSet = extractUrls(text);
-        if (urlSet.isEmpty()) {
-            new AlertDialog.Builder(this).setMessage(R.string.select_url_no_found).show();
-            return;
-        }
-
-        final CharSequence[] urls = urlSet.toArray(new CharSequence[urlSet.size()]);
-        Collections.reverse(Arrays.asList(urls)); // Latest first.
-
-        // Click to copy url to clipboard:
-        final AlertDialog dialog = new AlertDialog.Builder(TermuxActivity.this).setItems(urls, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface di, int which) {
-                String url = (String) urls[which];
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                clipboard.setPrimaryClip(new ClipData(null, new String[]{"text/plain"}, new ClipData.Item(url)));
-                Toast.makeText(TermuxActivity.this, R.string.select_url_copied_to_clipboard, Toast.LENGTH_LONG).show();
-            }
-        }).setTitle(R.string.select_url_dialog_title).create();
-
-        // Long press to open URL:
-        dialog.setOnShowListener(new OnShowListener() {
-            @Override
-            public void onShow(DialogInterface di) {
-                ListView lv = dialog.getListView(); // this is a ListView with your "buds" in it
-                lv.setOnItemLongClickListener(new OnItemLongClickListener() {
-                    @Override
-                    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                        dialog.dismiss();
-                        String url = (String) urls[position];
-                        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        try {
-                            startActivity(i, null);
-                        } catch (ActivityNotFoundException e) {
-                            // If no applications match, Android displays a system message.
-                            startActivity(Intent.createChooser(i, null));
-                        }
-                        return true;
-                    }
-                });
-            }
-        });
-
-        dialog.show();
-    }
-
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         TerminalSession session = getCurrentTermSession();
 
         switch (item.getItemId()) {
-            case CONTEXTMENU_SELECT_URL_ID:
-                showUrlSelection();
-                return true;
             case CONTEXTMENU_SHARE_TRANSCRIPT_ID:
                 if (session != null) {
                     Intent intent = new Intent(Intent.ACTION_SEND);

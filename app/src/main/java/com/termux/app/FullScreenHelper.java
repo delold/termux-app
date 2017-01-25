@@ -28,20 +28,6 @@ final class FullScreenHelper {
         View decorView = mActivity.getWindow().getDecorView();
 
         if (enabled) {
-            decorView.setOnSystemUiVisibilityChangeListener
-                (new View.OnSystemUiVisibilityChangeListener() {
-                    @Override
-                    public void onSystemUiVisibilityChange(int visibility) {
-                        if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
-                            if (mActivity.mSettings.isShowExtraKeys()) {
-                                mActivity.findViewById(R.id.viewpager).setVisibility(View.VISIBLE);
-                            }
-                            setImmersiveMode();
-                        } else {
-                            mActivity.findViewById(R.id.viewpager).setVisibility(View.GONE);
-                        }
-                    }
-                });
             setImmersiveMode();
         } else {
             decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);

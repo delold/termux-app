@@ -74,12 +74,8 @@ public final class TermuxKeyListener implements TerminalKeyListener {
                 imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
             } else if (unicodeChar == 'm'/* menu */) {
                 mActivity.mTerminalView.showContextMenu();
-            } else if (unicodeChar == 'r'/* rename */) {
-                mActivity.renameSession(currentSession);
             } else if (unicodeChar == 'c'/* create */) {
                 mActivity.addNewSession(false, null);
-            } else if (unicodeChar == 'u' /* urls */) {
-                mActivity.showUrlSelection();
             } else if (unicodeChar == 'v') {
                 mActivity.doPaste();
             } else if (unicodeChar == '+' || e.getUnicodeChar(KeyEvent.META_SHIFT_ON) == '+') {
@@ -108,12 +104,12 @@ public final class TermuxKeyListener implements TerminalKeyListener {
 
     @Override
     public boolean readControlKey() {
-        return (mActivity.mExtraKeysView != null && mActivity.mExtraKeysView.readControlButton()) || mVirtualControlKeyDown;
+        return mVirtualControlKeyDown;
     }
 
     @Override
     public boolean readAltKey() {
-        return (mActivity.mExtraKeysView != null && mActivity.mExtraKeysView.readAltButton());
+        return false;
     }
 
     @Override
@@ -232,9 +228,6 @@ public final class TermuxKeyListener implements TerminalKeyListener {
                                 return true;
                             case TermuxPreferences.SHORTCUT_ACTION_NEXT_SESSION:
                                 mActivity.switchToSession(true);
-                                return true;
-                            case TermuxPreferences.SHORTCUT_ACTION_RENAME_SESSION:
-                                mActivity.renameSession(mActivity.getCurrentTermSession());
                                 return true;
                         }
                     }
