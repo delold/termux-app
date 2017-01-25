@@ -50,8 +50,6 @@ public final class TermuxKeyListener implements TerminalKeyListener {
 
     @Override
     public void copyModeChanged(boolean copyMode) {
-        // Disable drawer while copying.
-        mActivity.getDrawer().setDrawerLockMode(copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
     }
 
     @Override
@@ -69,10 +67,6 @@ public final class TermuxKeyListener implements TerminalKeyListener {
                 mActivity.switchToSession(true);
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP || unicodeChar == 'p' /* previous */) {
                 mActivity.switchToSession(false);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                mActivity.getDrawer().openDrawer(Gravity.LEFT);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                mActivity.getDrawer().closeDrawers();
             } else if (unicodeChar == 'f'/* full screen */) {
                 mActivity.toggleImmersive();
             } else if (unicodeChar == 'k'/* keyboard */) {
@@ -207,11 +201,6 @@ public final class TermuxKeyListener implements TerminalKeyListener {
                     resultingCodePoint = -1;
                     AudioManager audio = (AudioManager) mActivity.getSystemService(Context.AUDIO_SERVICE);
                     audio.adjustSuggestedStreamVolume(AudioManager.ADJUST_SAME, AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI);
-                    break;
-
-                // Writing mode:
-                case 'q':
-                    mActivity.toggleShowExtraKeys();
                     break;
             }
 

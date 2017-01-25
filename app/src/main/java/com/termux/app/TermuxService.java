@@ -16,7 +16,6 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 
 import com.termux.R;
 import com.termux.terminal.EmulatorDebug;
@@ -72,9 +71,6 @@ public final class TermuxService extends Service implements SessionChangedCallba
 
     /**
      * The terminal sessions which this service manages.
-     * <p/>
-     * Note that this list is observed by {@link TermuxActivity#mListViewAdapter}, so any changes must be made on the UI
-     * thread and followed by a call to {@link ArrayAdapter#notifyDataSetChanged()} }.
      */
     final List<TerminalSession> mTerminalSessions = new ArrayList<>();
 

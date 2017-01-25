@@ -17,8 +17,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
@@ -29,36 +27,17 @@ import android.os.IBinder;
 import android.os.Vibrator;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
-import android.support.v4.widget.DrawerLayout;
-import android.text.SpannableString;
-import android.text.Spanned;
 import android.text.TextUtils;
-import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.view.View.OnLongClickListener;
-import android.view.ViewGroup;
-import android.view.WindowManager;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.termux.R;
@@ -111,8 +90,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
     @NonNull
     TerminalView mTerminalView;
 
-    ExtraKeysView mExtraKeysView;
-
     final FullScreenHelper mFullScreenHelper = new FullScreenHelper(this);
 
     TermuxPreferences mSettings;
@@ -123,9 +100,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
      * {@link #onServiceConnected(ComponentName, IBinder)}.
      */
     TermuxService mTermService;
-
-    /** Initialized in {@link #onServiceConnected(ComponentName, IBinder)}. */
-    ArrayAdapter<TerminalSession> mListViewAdapter;
 
     /** The last toast shown, used cancel current toast before showing new in {@link #showToast(String, boolean)}. */
     Toast mLastToast;
@@ -221,111 +195,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         mFullScreenHelper.setImmersive(mSettings.isFullScreen());
         mTerminalView.requestFocus();
 
-        final ViewPager viewPager = (ViewPager) findViewById(R.id.viewpager);
-        if (mSettings.isShowExtraKeys()) viewPager.setVisibility(View.VISIBLE);
-
-        viewPager.setAdapter(new PagerAdapter() {
-            @Override
-            public int getCount() {
-                return 2;
-            }
-
-            @Override
-            public boolean isViewFromObject(View view, Object object) {
-                return view == object;
-            }
-
-            @Override
-            public Object instantiateItem(ViewGroup collection, int position) {
-                LayoutInflater inflater = LayoutInflater.from(TermuxActivity.this);
-                View layout;
-                if (position == 0) {
-                    layout = mExtraKeysView = (ExtraKeysView) inflater.inflate(R.layout.extra_keys_main, collection, false);
-                } else {
-                    layout = inflater.inflate(R.layout.extra_keys_right, collection, false);
-                    final EditText editText = (EditText) layout.findViewById(R.id.text_input);
-                    editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-                        @Override
-                        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                            TerminalSession session = getCurrentTermSession();
-                            if (session != null) {
-                                if (session.isRunning()) {
-                                    session.write(editText.getText().toString() + "\n");
-                                } else {
-                                    removeFinishedSession(session);
-                                }
-                                editText.setText("");
-                            }
-                            return true;
-                        }
-                    });
-                }
-                collection.addView(layout);
-                return layout;
-            }
-
-            @Override
-            public void destroyItem(ViewGroup collection, int position, Object view) {
-                collection.removeView((View) view);
-            }
-        });
-
-        viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            @Override
-            public void onPageSelected(int position) {
-                if (position == 0) {
-                    mTerminalView.requestFocus();
-                } else {
-                    final EditText editText = (EditText) viewPager.findViewById(R.id.text_input);
-                    if (editText != null) editText.requestFocus();
-                }
-            }
-        });
-
-        View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                addNewSession(false, null);
-            }
-        });
-        newSessionButton.setOnLongClickListener(new OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                DialogUtils.textInput(TermuxActivity.this, R.string.session_new_named_title, null, R.string.session_new_named_positive_button,
-                    new DialogUtils.TextSetListener() {
-                        @Override
-                        public void onTextSet(String text) {
-                            addNewSession(false, text);
-                        }
-                    }, R.string.new_session_failsafe, new DialogUtils.TextSetListener() {
-                        @Override
-                        public void onTextSet(String text) {
-                            addNewSession(true, text);
-                        }
-                    }
-                    , -1, null, null);
-                return true;
-            }
-        });
-
-        findViewById(R.id.toggle_keyboard_button).setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                imm.toggleSoftInput(InputMethodManager.SHOW_IMPLICIT, 0);
-                getDrawer().closeDrawers();
-            }
-        });
-
-        findViewById(R.id.toggle_keyboard_button).setOnLongClickListener(new OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View v) {
-                toggleShowExtraKeys();
-                return true;
-            }
-        });
-
         registerForContextMenu(mTerminalView);
 
         Intent serviceIntent = new Intent(this, TermuxService.class);
@@ -339,15 +208,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         mBellSoundId = mBellSoundPool.load(this, R.raw.bell, 1);
     }
 
-    void toggleShowExtraKeys() {
-        final ViewPager viewPager = (ViewPager) findViewById(R.id.viewpager);
-        final boolean showNow = mSettings.toggleShowExtraKeys(TermuxActivity.this);
-        viewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
-        if (showNow && viewPager.getCurrentItem() == 1) {
-            // Focus the text input view if just revealed.
-            findViewById(R.id.text_input).requestFocus();
-        }
-    }
 
     /**
      * Part of the {@link ServiceConnection} interface. The service is bound with
@@ -374,7 +234,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                     // and don't want an annoying toast for that.
                     showToast(toToastTitle(updatedSession), false);
                 }
-                mListViewAdapter.notifyDataSetChanged();
             }
 
             @Override
@@ -391,7 +250,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                     if (indexOfSession >= 0)
                         showToast(toToastTitle(finishedSession) + " - exited", true);
                 }
-                mListViewAdapter.notifyDataSetChanged();
             }
 
             @Override
@@ -426,89 +284,14 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             }
         };
 
-        ListView listView = (ListView) findViewById(R.id.left_drawer_list);
-        mListViewAdapter = new ArrayAdapter<TerminalSession>(getApplicationContext(), R.layout.line_in_drawer, mTermService.getSessions()) {
-            final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
-            final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
-
-            @NonNull
-            @Override
-            public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-                View row = convertView;
-                if (row == null) {
-                    LayoutInflater inflater = getLayoutInflater();
-                    row = inflater.inflate(R.layout.line_in_drawer, parent, false);
-                }
-
-                TerminalSession sessionAtRow = getItem(position);
-                boolean sessionRunning = sessionAtRow.isRunning();
-
-                TextView firstLineView = (TextView) row.findViewById(R.id.row_line);
-
-                String name = sessionAtRow.mSessionName;
-                String sessionTitle = sessionAtRow.getTitle();
-
-                String numberPart = "[" + (position + 1) + "] ";
-                String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
-                String sessionTitlePart = (TextUtils.isEmpty(sessionTitle) ? "" : ((sessionNamePart.isEmpty() ? "" : "\n") + sessionTitle));
-
-                String text = numberPart + sessionNamePart + sessionTitlePart;
-                SpannableString styledText = new SpannableString(text);
-                styledText.setSpan(boldSpan, 0, numberPart.length() + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                styledText.setSpan(italicSpan, numberPart.length() + sessionNamePart.length(), text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                firstLineView.setText(styledText);
-
-                if (sessionRunning) {
-                    firstLineView.setPaintFlags(firstLineView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-                } else {
-                    firstLineView.setPaintFlags(firstLineView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-                }
-                int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? Color.BLACK : Color.RED;
-                firstLineView.setTextColor(color);
-                return row;
-            }
-        };
-        listView.setAdapter(mListViewAdapter);
-        listView.setOnItemClickListener(new OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                TerminalSession clickedSession = mListViewAdapter.getItem(position);
-                switchToSession(clickedSession);
-                getDrawer().closeDrawers();
-            }
-        });
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-                final TerminalSession selectedSession = mListViewAdapter.getItem(position);
-                renameSession(selectedSession);
-                return true;
-            }
-        });
-
         if (mTermService.getSessions().isEmpty()) {
             if (mIsVisible) {
                 TermuxInstaller.setupIfNeeded(TermuxActivity.this, new Runnable() {
                     @Override
                     public void run() {
                         if (mTermService == null) return; // Activity might have been destroyed.
-                        try {
-                            if (TermuxPreferences.isShowWelcomeDialog(TermuxActivity.this)) {
-                                new AlertDialog.Builder(TermuxActivity.this).setTitle(R.string.welcome_dialog_title).setMessage(R.string.welcome_dialog_body)
-                                    .setCancelable(false).setPositiveButton(android.R.string.ok, null)
-                                    .setNegativeButton(R.string.welcome_dialog_dont_show_again_button, new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            TermuxPreferences.disableWelcomeDialog(TermuxActivity.this);
-                                            dialog.dismiss();
-                                        }
-                                    }).show();
-                            }
-                            addNewSession(false, null);
-                        } catch (WindowManager.BadTokenException e) {
-                            // Activity finished - ignore.
-                        }
+
+
                     }
                 });
             } else {
@@ -543,7 +326,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             @Override
             public void onTextSet(String text) {
                 sessionToRename.mSessionName = text;
-                mListViewAdapter.notifyDataSetChanged();
             }
         }, -1, null, -1, null, null);
     }
@@ -569,7 +351,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         if (mTermService != null) {
             // The service has connected, but data may have changed since we were last in the foreground.
             switchToSession(getStoredCurrentSessionOrLast());
-            mListViewAdapter.notifyDataSetChanged();
         }
 
         registerReceiver(mBroadcastReceiever, new IntentFilter(RELOAD_STYLE_ACTION));
@@ -586,16 +367,11 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         TerminalSession currentSession = getCurrentTermSession();
         if (currentSession != null) TermuxPreferences.storeCurrentSession(this, currentSession);
         unregisterReceiver(mBroadcastReceiever);
-        getDrawer().closeDrawers();
     }
 
     @Override
     public void onBackPressed() {
-        if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
-            getDrawer().closeDrawers();
-        } else {
-            finish();
-        }
+        finish();
     }
 
     @Override
@@ -609,10 +385,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         unbindService(this);
     }
 
-    DrawerLayout getDrawer() {
-        return (DrawerLayout) findViewById(R.id.drawer_layout);
-    }
-
     void addNewSession(boolean failSafe, String sessionName) {
         if (mTermService.getSessions().size() >= MAX_SESSIONS) {
             new AlertDialog.Builder(this).setTitle(R.string.max_terminals_reached_title).setMessage(R.string.max_terminals_reached_message)
@@ -624,14 +396,12 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 newSession.mSessionName = sessionName;
             }
             switchToSession(newSession);
-            getDrawer().closeDrawers();
         }
     }
 
     /** Try switching to session and note about it, but do nothing if already displaying the session. */
     void switchToSession(TerminalSession session) {
         if (mTerminalView.attachSession(session)) {
-            noteSessionInfo();
             updateBackgroundColor();
         }
     }
@@ -649,17 +419,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             toastTitle.append(title);
         }
         return toastTitle.toString();
-    }
-
-    void noteSessionInfo() {
-        if (!mIsVisible) return;
-        TerminalSession session = getCurrentTermSession();
-        final int indexOfSession = mTermService.getSessions().indexOf(session);
-        showToast(toToastTitle(session), false);
-        mListViewAdapter.notifyDataSetChanged();
-        final ListView lv = ((ListView) findViewById(R.id.left_drawer_list));
-        lv.setItemChecked(indexOfSession, true);
-        lv.smoothScrollToPosition(indexOfSession);
     }
 
     @Override
@@ -810,9 +569,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
             case CONTEXTMENU_TOGGLE_FULLSCREEN_ID:
                 toggleImmersive();
                 return true;
-            case CONTEXTMENU_HELP_ID:
-                startActivity(new Intent(this, TermuxHelpActivity.class));
-                return true;
             default:
                 return super.onContextItemSelected(item);
         }
@@ -867,7 +623,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
         TermuxService service = mTermService;
 
         int index = service.removeTermSession(finishedSession);
-        mListViewAdapter.notifyDataSetChanged();
         if (mTermService.getSessions().isEmpty()) {
             // There are no sessions to show, so finish the activity.
             finish();
